@@ -29,13 +29,13 @@ class I18nTest < Test::Unit::TestCase
   end
 
   def test_uses_en_us_as_default_locale_by_default
-    assert_equal 'en', I18n.default_locale
+    assert_equal :'en', I18n.default_locale
   end
 
   def test_can_set_default_locale
     assert_nothing_raised{ I18n.default_locale = 'de' }
-    assert_equal 'de', I18n.default_locale
-    I18n.default_locale = 'en'
+    assert_equal :'de', I18n.default_locale
+    I18n.default_locale = :'en'
   end
 
   def test_uses_default_locale_as_locale_by_default
@@ -44,9 +44,9 @@ class I18nTest < Test::Unit::TestCase
 
   def test_can_set_locale_to_thread_current
     assert_nothing_raised{ I18n.locale = 'de' }
-    assert_equal 'de', I18n.locale
-    assert_equal 'de', Thread.current[:locale]
-    I18n.locale = 'en'
+    assert_equal :'de', I18n.locale
+    assert_equal :'de', Thread.current[:locale]
+    I18n.locale = :'en'
   end
 
   def test_can_set_exception_handler
@@ -72,7 +72,7 @@ class I18nTest < Test::Unit::TestCase
   end
 
   def test_translate_given_no_locale_uses_i18n_locale
-    I18n.backend.expects(:translate).with 'en', :foo, {}
+    I18n.backend.expects(:translate).with :'en', :foo, {}
     I18n.translate :foo
   end
 
@@ -122,4 +122,25 @@ class I18nTest < Test::Unit::TestCase
   def test_localize_object_raises_argument_error
     assert_raises(I18n::ArgumentError) { I18n.l Object.new }
   end
+
+  def test_proc_exception_handler
+    I18n.exception_handler = Proc.new{ |exception, locale, key, options|
+      "No exception here! [Proc handler]"
+    }
+    assert_equal "No exception here! [Proc handler]", I18n.translate(:test_proc_handler)
+  ensure
+    I18n.exception_handler = :default_exception_handler
+  end
+
+  def test_class_exception_handler
+    I18n.exception_handler = Class.new do
+        def handle_exception(exception, locale, key, options)
+          "No exception here! [Class handler]"
+        end
+      end.new
+    assert_equal "No exception here! [Class handler]", I18n.translate(:test_class_handler)
+  ensure
+    I18n.exception_handler = :default_exception_handler
+  end
+
 end

@@ -32,7 +32,7 @@ module I18n
 
     # Sets the current default locale. Used to set a custom default locale.
     def default_locale=(locale)
-      @@default_locale = locale
+      @@default_locale = locale.to_sym
     end
 
     # Returns the current locale. Defaults to I18n.default_locale.
@@ -42,7 +42,7 @@ module I18n
 
     # Sets the current locale pseudo-globally, i.e. in the Thread.current hash.
     def locale=(locale)
-      Thread.current[:locale] = locale
+      Thread.current[:locale] = locale.to_sym
     end
 
     # Returns an array of locales for which translations are available
@@ -163,11 +163,16 @@ module I18n
     def translate(key, options = {})
       locale = options.delete(:locale) || I18n.locale
       backend.translate(locale, key, options)
-    rescue I18n::ArgumentError => e
-      raise e if options[:raise]
-      send(@@exception_handler, e, locale, key, options)
+    rescue I18n::ArgumentError => exception
+      raise exception if options[:raise]
+      handle_exception(exception, locale, key, options)
     end
     alias :t :translate
+
+    def translate!(key, options = {})
+      translate(key, options.merge( :raise => true ))
+    end
+    alias :t! :translate!
 
     # Localizes certain objects, such as dates and numbers to local formatting.
     def localize(object, options = {})
@@ -185,6 +190,63 @@ module I18n
     def default_exception_handler(exception, locale, key, options)
       return exception.message if MissingTranslationData === exception
       raise exception
+    end
+
+    ##
+    # Any exceptions thrown in translate will be sent to the @@exception_handler.
+    #
+    # if exception_handler is a symbol then it will simply be sent to the reciever on I18n.
+    #
+    # A proc will simply be called.
+    #
+    # Otherwise handle_exception will be called on the exception_handler object.
+    #
+    # Symbol:
+    #  I18n.exception_handler = :default_exception_handler # the default
+    #  I18n.default_exception_handler(exception, locale, key, options) # is called
+    # Proc:
+    #  I18n.exception_handler = proc{|exception, locale, key, options| key.to_s.humanize }
+    #  I18n.exception_handler.call(exception, locale, key, options)
+    # Object:
+    #  class I18nExceptionHandler
+    #    attr_accessor :exception, :locale, :key, :options
+    #    def handle_exception(exception, locale, key, options)
+    #      @exception, @locale, @key, @options = exception, locale, key, options
+    #      case exception
+    #      when I18n::MissingTranslationData
+    #        missing_translation_data
+    #      when I18n::InvalidLocale
+    #        invalid_locale
+    #      else
+    #        raise exception
+    #      end
+    #    end
+    #
+    #    def missing_translation_data
+    #      if I18n.locale != I18n.default_locale
+    #        I18n.translate(key, :locale => I18n.default_locale)
+    #      else
+    #        raise exception
+    #      end
+    #    end
+    #
+    #    def invalid_locale
+    #      "Sorry, no translation is available for #{locale}!"
+    #    end
+    #  end
+    #
+    #  I18n.exception_handler = I18nExceptionHandler.new
+    #  I18n.exception_handler.handle_exception(exception, locale, key, options)
+    #
+    def handle_exception(exception, locale, key, options)
+      case @@exception_handler
+      when Symbol
+        send @@exception_handler, exception, locale, key, options
+      when Proc
+        @@exception_handler.call(exception, locale, key, options)
+      else
+        @@exception_handler.handle_exception exception, locale, key, options
+      end
     end
 
     # Merges the given locale, key and scope into a single array of keys.
