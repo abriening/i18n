@@ -121,11 +121,11 @@ module I18n
 
         # TODO only translate these if the format string is actually present
         # TODO check which format strings are present, then bulk translate then, then replace them
-        format.gsub!(/%a/, translate(locale, :"date.abbr_day_names")[object.wday])
-        format.gsub!(/%A/, translate(locale, :"date.day_names")[object.wday])
-        format.gsub!(/%b/, translate(locale, :"date.abbr_month_names")[object.mon])
-        format.gsub!(/%B/, translate(locale, :"date.month_names")[object.mon])
-        format.gsub!(/%p/, translate(locale, :"time.#{object.hour < 12 ? :am : :pm}")) if object.respond_to? :hour
+        format.gsub!(/%a/, translate(locale, :"date.abbr_day_names")[object.wday])     if format.include?('%a')
+        format.gsub!(/%A/, translate(locale, :"date.day_names")[object.wday])          if format.include?('%A')
+        format.gsub!(/%b/, translate(locale, :"date.abbr_month_names")[object.mon])    if format.include?('%b')
+        format.gsub!(/%B/, translate(locale, :"date.month_names")[object.mon])         if format.include?('%B')
+        format.gsub!(/%p/, translate(locale, :"time.#{object.hour < 12 ? :am : :pm}")) if format.include?('%p') && object.respond_to?(:hour)
         object.strftime(format)
       end
 
