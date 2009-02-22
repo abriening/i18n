@@ -42,7 +42,13 @@ module I18n
 
     # Sets the current locale pseudo-globally, i.e. in the Thread.current hash.
     def locale=(locale)
-      Thread.current[:locale] = locale.to_sym
+      case locale
+      when Array
+        locale = locale.map{ |x| x.to_sym }
+      else
+        locale = locale.to_sym
+      end
+      Thread.current[:locale] = locale
     end
 
     # Returns an array of locales for which translations are available

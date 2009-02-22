@@ -85,24 +85,46 @@ module I18n
         merge_translations(locale, data)
       end
 
-      def translate(locale, key, options = {})
-        raise I18n::InvalidLocale.new(locale) if locale.nil?
-        return key.map { |k| translate(locale, k, options) } if key.is_a? Array
+      def translate(locales, key, options = {})
+        raise I18n::InvalidLocale.new(locales) if locales.nil? || (Array === locales && locales.empty?)
+        return key.map { |k| translate(locales, k, options) } if key.is_a? Array
 
+        locales = Array(locales)
         reserved = :scope, :default
         count, scope, default = options.values_at(:count, *reserved)
         options.delete(:default)
         values = options.reject { |name, value| reserved.include?(name) }
 
-        entry = lookup(locale, key, scope)
-        if entry.nil?
-          entry = default(locale, default, options)
+        default, string_default = Array(default).select{|x| Symbol === x  }, Array(default).detect{|x| String === x  }
+
+        entry = nil
+        used_locale = nil
+
+        ##
+        # Lookup for each locale in locales
+        # Assume that a locale specific default is better than a failover locale's translation
+        Array(locales).each do | locale |
+          entry = lookup(locale, key, scope)
           if entry.nil?
-            raise(I18n::MissingTranslationData.new(locale, key, options))
+            entry = default(locale, default, options)
+          end
+          unless entry.nil?
+            used_locale = locale
+            break
           end
         end
-        entry = pluralize(locale, entry, count)
-        entry = interpolate(locale, entry, values)
+
+        used_locale ||= locales.first
+
+        # use the string_default
+        entry = default(used_locale, string_default, options) if entry.nil?
+
+        # raise if all failed
+        raise(I18n::MissingTranslationData.new(used_locale, key, options)) if entry.nil?
+
+        # process if not nil
+        entry = pluralize(used_locale, entry, count)
+        entry = interpolate(used_locale, entry, values)
         entry
       end
 
