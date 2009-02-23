@@ -95,36 +95,36 @@ module I18n
         options.delete(:default)
         values = options.reject { |name, value| reserved.include?(name) }
 
-        default, string_default = Array(default).select{|x| Symbol === x  }, Array(default).detect{|x| String === x  }
+        default, string_default = map_defaults( default )
 
         entry = nil
-        used_locale = nil
+        returned_locale = nil
 
-        ##
         # Lookup for each locale in locales
-        # Assume that a locale specific default is better than a failover locale's translation
+        # Assume that a locale specific default is better than a fallback locale's translation
         Array(locales).each do | locale |
           entry = lookup(locale, key, scope)
           if entry.nil?
             entry = default(locale, default, options)
           end
           unless entry.nil?
-            used_locale = locale
+            # an entry was found - in returned_locale
+            returned_locale = locale
             break
           end
         end
 
-        used_locale ||= locales.first
+        returned_locale ||= locales.first
 
-        # use the string_default
-        entry = default(used_locale, string_default, options) if entry.nil?
+        # use the string_default if no entry
+        entry = default(returned_locale, string_default, options) if entry.nil?
 
         # raise if all failed
-        raise(I18n::MissingTranslationData.new(used_locale, key, options)) if entry.nil?
+        raise(I18n::MissingTranslationData.new(returned_locale, key, options)) if entry.nil?
 
         # process if not nil
-        entry = pluralize(used_locale, entry, count)
-        entry = interpolate(used_locale, entry, values)
+        entry = pluralize(returned_locale, entry, count)
+        entry = interpolate(returned_locale, entry, values)
         entry
       end
 
@@ -205,6 +205,9 @@ module I18n
           case default
             when String then default
             when Symbol then translate locale, default, options
+            when Hash   then default.each do |loc,obj|
+              result = default(loc, obj, options.dup) and return result
+            end and nil
             when Array  then default.each do |obj|
               result = default(locale, obj, options.dup) and return result
             end and nil
@@ -303,6 +306,22 @@ module I18n
             result
           }
         end
+
+        def map_defaults( default )
+          return if default.nil?
+          defaults, string_default = [], nil
+          Array(default).each do | x |
+            case x
+            when String
+              string_default = x
+              break # backwards compat, the first string default would break the default array
+            else
+              defaults << x
+            end
+          end
+          [defaults, string_default]
+        end
+
     end # Basic
   end # Backend
 end # I18n
