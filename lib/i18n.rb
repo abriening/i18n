@@ -37,18 +37,22 @@ module I18n
 
     # Returns the current locale. Defaults to I18n.default_locale.
     def locale
-      Thread.current[:locale] ||= default_locale
+      locales.first
     end
 
     # Sets the current locale pseudo-globally, i.e. in the Thread.current hash.
     def locale=(locale)
-      case locale
-      when Array
-        locale = locale.map{ |x| x.to_sym }
-      else
-        locale = locale.to_sym
-      end
-      Thread.current[:locale] = locale
+      self.locales = [locale]
+      locale
+    end
+
+    def locales
+      Thread.current[:locales] ||= [default_locale]
+    end
+
+    def locales=(locales)
+      Thread.current[:locales] = locales.map{ |x| x.to_sym }
+      locales
     end
 
     # Returns an array of locales for which translations are available
@@ -167,7 +171,7 @@ module I18n
     # Which is the same as using a scope option:
     #   I18n.t [:foo, :bar], :scope => :baz
     def translate(key, options = {})
-      locale = options.delete(:locale) || I18n.locale
+      locale = options.delete(:locale) || I18n.locales
       backend.translate(locale, key, options)
     rescue I18n::ArgumentError => exception
       raise exception if options[:raise]
@@ -182,7 +186,7 @@ module I18n
 
     # Localizes certain objects, such as dates and numbers to local formatting.
     def localize(object, options = {})
-      locale = options[:locale] || I18n.locale
+      locale = options[:locale] || I18n.locales
       format = options[:format] || :default
       backend.localize(locale, object, format)
     end

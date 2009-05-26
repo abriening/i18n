@@ -19,13 +19,13 @@ class I18nLocaleFallbackTest < Test::Unit::TestCase
     }
   end
 
-  def test_locale_can_be_an_array
-    assert_nothing_raised{ I18n.locale = ['es-MX', 'es', 'en'] }
-    assert_equal [:'es-MX', :es, :en], I18n.locale
+  def test_locales_can_be_an_array
+    assert_nothing_raised{ I18n.locales = ['es-MX', 'es', 'en'] }
+    assert_equal [:'es-MX', :es, :en], I18n.locales
   end
 
   def test_locale_fallback_if_missing_translation
-    I18n.locale = ['es-MX', 'es', 'en']
+    I18n.locales = ['es-MX', 'es', 'en']
     assert_raise(I18n::MissingTranslationData){ I18n.translate! :fallback, :locale => :en }
 
     fallback_en = "Fallback [en]"
@@ -46,7 +46,7 @@ class I18nLocaleFallbackTest < Test::Unit::TestCase
   end
 
   def test_string_default_not_used_when_fallback_symbol_default_exists
-    I18n.locale = ['es-MX', 'es', 'en']
+    I18n.locales = ['es-MX', 'es', 'en']
 
     fallback_en = "Fallback [en]"
     I18n.backend.store_translations :en, { :fallback => fallback_en }

@@ -45,7 +45,11 @@ class I18nTest < Test::Unit::TestCase
   def test_can_set_locale_to_thread_current
     assert_nothing_raised{ I18n.locale = 'de' }
     assert_equal :'de', I18n.locale
-    assert_equal :'de', Thread.current[:locale]
+    Thread.new do
+      assert_equal I18n.default_locale, I18n.locale
+    end.join
+    # assert_equal :'de', Thread.current[:locale] # test the logic not the implementation
+  ensure
     I18n.locale = :'en'
   end
 
@@ -72,7 +76,7 @@ class I18nTest < Test::Unit::TestCase
   end
 
   def test_translate_given_no_locale_uses_i18n_locale
-    I18n.backend.expects(:translate).with :'en', :foo, {}
+    I18n.backend.expects(:translate).with [:'en'], :foo, {}
     I18n.translate :foo
   end
 
